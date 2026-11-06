@@ -1,10 +1,10 @@
-// Lecture Notes: the small, safe API the editor page is allowed to use.
+// Codebook: the small, safe API the editor page is allowed to use.
 const { contextBridge, ipcRenderer } = require('electron');
 const inv = (ch) => (...a) => ipcRenderer.invoke(ch, ...a);
 
 contextBridge.exposeInMainWorld('lnApp', {
   load: inv('load'), readNote: inv('readNote'), saveNote: inv('saveNote'), deleteNote: inv('deleteNote'),
-  saveWorkspace: inv('saveWorkspace'), saveSettings: inv('saveSettings'), saveImage: inv('saveImage'),
+  saveWorkspace: inv('saveWorkspace'), saveSettings: inv('saveSettings'), saveImage: inv('saveImage'), discordPresence: inv('discordPresence'),
   historyList: inv('historyList'), historyRead: inv('historyRead'), trashList: inv('trashList'), trashRestore: inv('trashRestore'),
   exportMarkdown: inv('exportMarkdown'), exportHtml: inv('exportHtml'), exportPdf: inv('exportPdf'), exportFolder: inv('exportFolder'),
   chooseVault: inv('chooseVault'), switchVault: inv('switchVault'), openFolder: inv('openFolder'), showPath: inv('showPath'), showImage: inv('showImage'),

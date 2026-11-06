@@ -17,6 +17,7 @@ const SETTINGS_PAGES = [
   { id: 'plugins', group: null, title: 'Plugins', keywords: 'plugins extensions math katex wiki backlinks timer todo folding history' },
   { id: 'timer', group: 'Tools', title: 'Lecture Timer', keywords: 'timer timestamp lecture recording run' },
   { id: 'history', group: 'Tools', title: 'Local History', keywords: 'versions history backup snapshot restore trash' },
+  { id: 'discord', group: 'Tools', title: 'Discord Rich Presence', keywords: 'discord rpc rich presence status activity playing friends' },
   { id: 'advanced', group: null, title: 'Advanced Settings', keywords: 'project view sort dates counts single click folders' },
 ];
 SETTINGS_PAGES.forEach(p => { p.path = (p.group ? p.group + ' › ' : '') + p.title; });
@@ -85,7 +86,7 @@ const SettingsUI = {
       toolbars: ['showFormatBar', 'floatingBar', 'showStatusBar', 'showBreadcrumbs'], system: ['autosaveDelay', 'confirmDelete', 'restoreSession', 'checkUpdates'],
       editor: ['lineNumbers', 'currentLine', 'headingMarkers', 'foldIcons', 'focusMode', 'typewriter', 'spellcheck', 'spellLang', 'editorWidth', 'paraSpacing', 'calloutDefault'],
       font: ['textFont', 'headingFont', 'codeFont', 'fontSize', 'codeSize', 'lineHeight', 'ligatures'], code: ['codeTab', 'autoPairs', 'wrapCode', 'codeLang'],
-      images: ['imgWidth', 'imgMaxDim', 'imgQuality', 'imgRounded', 'imgShadow', 'imgCaptions'], timer: ['timerHeadings', 'timerHours'], history: ['historyMinutes', 'historyDays'],
+      images: ['imgWidth', 'imgMaxDim', 'imgQuality', 'imgRounded', 'imgShadow', 'imgCaptions'], timer: ['timerHeadings', 'timerHours'], history: ['historyMinutes', 'historyDays'], discord: ['discordRpc', 'discordShow', 'discordModule', 'discordTimer'],
       advanced: ['projectSort', 'projectDates', 'projectCounts', 'foldersFirst', 'singleClickOpen'] }[this.page] || [];
     keys.forEach(k => { if (k in DEFAULT_SETTINGS) SETTINGS[k] = structuredClone(DEFAULT_SETTINGS[k]); });
     if (this.page === 'keymap') { SETTINGS.keymap = {}; SETTINGS.keymapPreset = 'intellij'; }
@@ -282,6 +283,24 @@ const SettingsUI = {
       el.appendChild(row('Save a version at most every', h('div.inline', numberField(SETTINGS.historyMinutes, { min: 1, max: 120 }, v => this.set('historyMinutes', v)), h('span.lbl', 'minutes'))));
       el.appendChild(row('Keep versions for', h('div.inline', numberField(SETTINGS.historyDays, { min: 1, max: 365 }, v => this.set('historyDays', v)), h('span.lbl', 'days'))));
       if (IS_DESKTOP) el.appendChild(h('div.inline', h('button.btn', { type: 'button', onclick: () => { this.dlg.close('ok'); HistoryUI.trash(); } }, 'Restore Deleted Notes…')));
+    },
+    discord(el) {
+      el.appendChild(h('p.hint.block', 'Show what you’re working on in your Discord profile, like “Playing Codebook — Editing Lecture 3”. The Discord desktop app must be open on this computer.'));
+      if (!IS_DESKTOP) { el.appendChild(h('p.hint.block', 'Only available in the desktop app.')); return; }
+      el.appendChild(cbs([['Show Codebook in my Discord status', 'discordRpc', null, () => SETTINGS.discordRpc, v => this.set('discordRpc', v, true)]], this));
+      if (!SETTINGS.discordRpc) return;
+      el.appendChild(sec('What to show'));
+      el.appendChild(row('Status line', selectBox([['title', 'Note title (“Editing Lecture 3”)'], ['module', 'Module only (“Editing notes for COMP101”)'], ['generic', 'Nothing specific (“Writing notes”)']], SETTINGS.discordShow, v => this.set('discordShow', v, true))));
+      el.appendChild(cbs([
+        SETTINGS.discordShow === 'title' ? ['Show the module under the title', 'discordModule'] : null,
+        ['Show elapsed time', 'discordTimer', 'Time since you opened Codebook, or since you started the lecture timer'],
+      ].filter(Boolean), this));
+      el.appendChild(sec('Connection'));
+      const status = h('span.hint', !(SETTINGS.discordClientId || DISCORD_APP_ID) ? 'Add an Application ID to connect' : Presence.connected ? 'Connected to Discord' : 'Not connected yet. Is Discord open?');
+      const idIn = h('input.field.mono', { type: 'text', value: SETTINGS.discordClientId, placeholder: DISCORD_APP_ID ? 'Default (built in)' : 'Paste your Application ID', spellcheck: false, style: { width: '260px' } });
+      idIn.addEventListener('change', () => { const v = idIn.value.trim(); if (v && !/^\d{15,25}$/.test(v)) { notify('That doesn’t look like an Application ID', 'It should be a long number from the Discord Developer Portal.', 'warning'); return; } this.set('discordClientId', v); });
+      el.appendChild(row('Application ID', h('div.inline', idIn), DISCORD_APP_ID ? 'Leave empty to use Codebook’s own. Only change this if you made your own Discord application.' : 'From discord.com/developers → your application → General Information.'));
+      el.appendChild(row('Status', status));
     },
     advanced(el) {
       el.appendChild(sec('Project View'));

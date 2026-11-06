@@ -63,6 +63,8 @@ const DEFAULT_SETTINGS = {
   projectSort: 'created', projectDates: true, projectCounts: true, foldersFirst: true,
   timerHeadings: false, timerHours: false, historyMinutes: 5, historyDays: 30,
   checkUpdates: true, dateStyle: 'medium',
+  // Discord Rich Presence
+  discordRpc: false, discordClientId: '', discordShow: 'title', discordModule: true, discordTimer: true,
 };
 
 let SETTINGS = structuredClone(DEFAULT_SETTINGS);

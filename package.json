@@ -1,10 +1,10 @@
 {
-  "name": "lecture-notes",
-  "productName": "Lecture Notes",
-  "version": "2.0.0",
+  "name": "codebook",
+  "productName": "Codebook",
+  "version": "2.1.0",
   "description": "An IntelliJ-style notebook for university lectures: themes, keymaps, tool windows, maths, code and images.",
   "main": "main.js",
-  "author": "Lecture Notes",
+  "author": "TibLmao",
   "license": "MIT",
   "repository": "github:TibLmao/lecture-notes",
   "scripts": {
@@ -31,15 +31,50 @@
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "com.lecturenotes.app",
-    "productName": "Lecture Notes",
-    "artifactName": "LectureNotes-Setup-${version}.${ext}",
-    "directories": { "buildResources": "build", "output": "dist" },
-    "files": ["main.js", "preload.js", "package.json", "app/**/*", "build/icon.png", "node_modules/**/*"],
+    "appId": "com.codebook.app",
+    "productName": "Codebook",
+    "artifactName": "Codebook-Setup-${version}.${ext}",
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "package.json",
+      "app/**/*",
+      "build/icon.png",
+      "node_modules/**/*"
+    ],
     "asar": true,
-    "win": { "target": [{ "target": "nsis", "arch": ["x64"] }], "icon": "build/icon.png" },
-    "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "createStartMenuShortcut": true, "shortcutName": "Lecture Notes" },
-    "mac": { "target": "dmg", "category": "public.app-category.productivity", "icon": "build/icon.png" },
-    "linux": { "target": "AppImage", "category": "Office", "icon": "build/icon.png" }
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Codebook"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.png"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Office",
+      "icon": "build/icon.png"
+    }
   }
 }

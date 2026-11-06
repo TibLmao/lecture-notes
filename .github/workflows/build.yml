@@ -35,16 +35,16 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LectureNotes-Setup
+          name: Codebook-Setup
           path: dist/*.exe
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.VERSION }}-build${{ github.run_number }}
-          name: Lecture Notes ${{ env.VERSION }} (build ${{ github.run_number }})
+          name: Codebook ${{ env.VERSION }} (build ${{ github.run_number }})
           body: |
-            Download **LectureNotes-Setup-${{ env.VERSION }}.exe** below and double-click it to install.
+            Download **Codebook-Setup-${{ env.VERSION }}.exe** below and double-click it to install.
             Windows may say "Windows protected your PC" because the app isn't code-signed: click **More info → Run anyway**.
           files: dist/*.exe
           make_latest: true

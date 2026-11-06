@@ -1,4 +1,4 @@
-// Lecture Notes: Electron main process
+// Codebook: Electron main process
 const { app, BrowserWindow, ipcMain, protocol, net, shell, Menu, dialog, session, nativeTheme } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -7,7 +7,7 @@ const os = require('os');
 const { pathToFileURL } = require('url');
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'lnimg', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }]);
-app.setAppUserModelId('com.lecturenotes.app');
+app.setAppUserModelId('com.codebook.app');
 if (!app.requestSingleInstanceLock()) { app.quit(); }
 
 const USER = () => app.getPath('userData');
@@ -40,7 +40,12 @@ const V = {
   ws: () => path.join(config.vault, 'workspace.json'),
 };
 async function ensureVault() {
-  if (!config.vault) config.vault = path.join(app.getPath('documents'), 'LectureNotes');
+  if (!config.vault) {
+    // people upgrading from "Lecture Notes" keep their existing folder
+    const old = path.join(app.getPath('documents'), 'LectureNotes');
+    const neu = path.join(app.getPath('documents'), 'Codebook');
+    config.vault = (!fs.existsSync(neu) && fs.existsSync(path.join(old, 'notes'))) ? old : neu;
+  }
   for (const d of [V.notes(), V.images(), V.history(), V.trash()]) await fsp.mkdir(d, { recursive: true });
   config.recent = [config.vault, ...(config.recent || []).filter(p => p !== config.vault)].slice(0, 10);
   await writeAtomic(CONFIG(), JSON.stringify(config, null, 1));
@@ -105,6 +110,7 @@ function registerIpc() {
   });
   H('saveWorkspace', async data => writeAtomic(V.ws(), JSON.stringify(data, null, 1)));
   H('saveSettings', async data => writeAtomic(SETTINGS(), JSON.stringify(data, null, 1)));
+  H('discordPresence', async (clientId, activity) => { Discord.configure(clientId); if (Discord.clientId) Discord.set(activity || null); return { connected: Discord.ready }; });
   H('saveImage', async (bytes, type) => {
     const ext = ({ 'image/png': '.png', 'image/jpeg': '.jpg', 'image/gif': '.gif', 'image/webp': '.webp', 'image/svg+xml': '.svg' })[type] || '.png';
     const d = new Date(); const stamp = d.toISOString().slice(0, 10);
@@ -153,7 +159,7 @@ function registerIpc() {
   H('exportPdf', async ({ name, html }) => {
     const r = await dialog.showSaveDialog(win, { defaultPath: path.join(app.getPath('documents'), safeName(name)), filters: [{ name: 'PDF', extensions: ['pdf'] }] });
     if (r.canceled || !r.filePath) return null;
-    const tmp = path.join(os.tmpdir(), 'lecture-notes-export-' + Date.now() + '.html');
+    const tmp = path.join(os.tmpdir(), 'codebook-export-' + Date.now() + '.html');
     await fsp.writeFile(tmp, await inlineImages(html), 'utf8');
     const pw = new BrowserWindow({ show: false, webPreferences: { sandbox: true, javascript: false } });
     try {
@@ -197,7 +203,7 @@ function registerIpc() {
     const repo = String((pkg.repository && pkg.repository.url) || pkg.repository || '').replace(/^github:/, '').replace(/^https:\/\/github.com\//, '').replace(/\.git$/, '');
     let build = 0; try { build = require('./app/build.json').build || 0; } catch (e) {}
     if (!repo || !repo.includes('/')) throw new Error('No update source configured');
-    const res = await net.fetch(`https://api.github.com/repos/${repo}/releases/latest`, { headers: { 'User-Agent': 'LectureNotes', Accept: 'application/vnd.github+json' } });
+    const res = await net.fetch(`https://api.github.com/repos/${repo}/releases/latest`, { headers: { 'User-Agent': 'Codebook', Accept: 'application/vnd.github+json' } });
     if (!res.ok) throw new Error(res.status === 404 ? 'No public releases found' : 'GitHub returned ' + res.status);
     const j = await res.json();
     const latestBuild = parseInt(((j.tag_name || '').match(/build(\d+)/) || [])[1] || '0');
@@ -216,7 +222,7 @@ async function createWindow() {
   win = new BrowserWindow({
     width: (st.bounds && st.bounds.width) || 1360, height: (st.bounds && st.bounds.height) || 880,
     x: st.bounds && st.bounds.x, y: st.bounds && st.bounds.y,
-    minWidth: 640, minHeight: 420, backgroundColor: bg, title: 'Lecture Notes', show: false,
+    minWidth: 640, minHeight: 420, backgroundColor: bg, title: 'Codebook', show: false,
     icon: path.join(__dirname, 'build', 'icon.png'),
     titleBarStyle: mac ? 'hiddenInset' : 'hidden',
     titleBarOverlay: mac ? undefined : { color: bg, symbolColor: dark ? '#CED0D6' : '#6C707E', height: 40 },
@@ -245,7 +251,95 @@ async function createWindow() {
 function debounce(fn, ms) { let t; return () => { clearTimeout(t); t = setTimeout(fn, ms); }; }
 
 app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
+/* carry settings over from the app's old name ("Lecture Notes") */
+async function migrateUserData() {
+  try {
+    const oldDir = path.join(app.getPath('appData'), 'Lecture Notes');
+    if (oldDir === USER() || fs.existsSync(CONFIG()) || !fs.existsSync(path.join(oldDir, 'config.json'))) return;
+    await fsp.mkdir(USER(), { recursive: true });
+    for (const f of ['config.json', 'settings.json', 'window.json']) await fsp.copyFile(path.join(oldDir, f), path.join(USER(), f)).catch(() => {});
+  } catch (e) { /* best effort */ }
+}
+
+/* ---------------- Discord Rich Presence ----------------
+   Talks to the Discord desktop app over its local IPC pipe (no extra packages).
+   Frame = int32LE opcode, int32LE length, JSON. 0 handshake, 1 frame, 2 close, 3 ping, 4 pong. */
+const Discord = {
+  sock: null, clientId: '', ready: false, retry: null, want: null, sent: 0, timer: null, startedAt: Date.now(), buf: Buffer.alloc(0), nonce: 0,
+  pipePath(i) {
+    if (process.platform === 'win32') return '\\\\?\\pipe\\discord-ipc-' + i;
+    const base = process.env.XDG_RUNTIME_DIR || process.env.TMPDIR || process.env.TMP || process.env.TEMP || '/tmp';
+    return path.join(base.replace(/\/$/, ''), 'discord-ipc-' + i);
+  },
+  configure(clientId) {
+    clientId = String(clientId || '').trim();
+    if (!/^\d{15,25}$/.test(clientId)) clientId = '';
+    if (clientId === this.clientId) { if (clientId && !this.sock) this.connect(); return; }
+    this.stop(); this.clientId = clientId;
+    if (clientId) this.connect();
+  },
+  connect(i = 0) {
+    if (!this.clientId || this.sock) return;
+    if (i > 9) return this.later();
+    const net_ = require('net');
+    const s = net_.createConnection(this.pipePath(i));
+    let opened = false;
+    s.once('connect', () => {
+      opened = true; this.sock = s; this.buf = Buffer.alloc(0);
+      this.write(0, { v: 1, client_id: this.clientId });
+    });
+    s.on('data', d => this.onData(s, d));
+    s.on('error', () => { if (!opened) { s.destroy(); this.connect(i + 1); } });
+    s.on('close', () => { if (opened && this.sock === s) { this.sock = null; this.ready = false; this.later(); } });
+  },
+  write(op, obj, s = this.sock) {
+    if (!s) return;
+    const body = Buffer.from(JSON.stringify(obj), 'utf8');
+    const head = Buffer.alloc(8); head.writeInt32LE(op, 0); head.writeInt32LE(body.length, 4);
+    try { s.write(Buffer.concat([head, body])); } catch (e) {}
+  },
+  onData(s, d) {
+    this.buf = Buffer.concat([this.buf, d]);
+    while (this.buf.length >= 8) {
+      const op = this.buf.readInt32LE(0), len = this.buf.readInt32LE(4);
+      if (this.buf.length < 8 + len) break;
+      let msg = null; try { msg = JSON.parse(this.buf.slice(8, 8 + len).toString('utf8')); } catch (e) {}
+      this.buf = this.buf.slice(8 + len);
+      if (op === 3) this.write(4, msg, s);                       // ping -> pong
+      else if (op === 2) { s.destroy(); }                         // Discord closed us (e.g. bad client id)
+      else if (op === 1 && msg && msg.cmd === 'DISPATCH' && msg.evt === 'READY') { this.ready = true; this.flush(true); }
+    }
+  },
+  later() { clearTimeout(this.retry); if (this.clientId) this.retry = setTimeout(() => this.connect(), 20000); },
+  set(activity) { this.want = activity; this.flush(); },
+  flush(now) {
+    if (!this.ready) return;
+    // Discord allows ~5 updates per 20s: send at most one every 4s, latest wins
+    const wait = now ? 0 : Math.max(0, this.sent + 4000 - Date.now());
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => {
+      if (!this.ready) return;
+      this.sent = Date.now();
+      const a = this.want;
+      const activity = a ? {
+        details: a.details ? String(a.details).slice(0, 128) : undefined,
+        state: a.state ? String(a.state).slice(0, 128) : undefined,
+        timestamps: a.noTime ? undefined : { start: a.start || this.startedAt },
+        assets: { large_image: 'codebook', large_text: 'Codebook', ...(a.small ? { small_image: a.small, small_text: a.smallText || '' } : {}) },
+        instance: false,
+      } : undefined;
+      this.write(1, { cmd: 'SET_ACTIVITY', args: { pid: process.pid, activity }, nonce: String(++this.nonce) });
+    }, wait);
+  },
+  stop() {
+    clearTimeout(this.retry); clearTimeout(this.timer);
+    const s = this.sock; this.sock = null; this.ready = false;
+    if (s) { try { this.write(1, { cmd: 'SET_ACTIVITY', args: { pid: process.pid }, nonce: String(++this.nonce) }, s); s.end(); } catch (e) {} }
+  },
+};
+
 app.whenReady().then(async () => {
+  await migrateUserData();
   config = await readJSON(CONFIG(), { vault: '', recent: [] });
   await ensureVault();
   protocol.handle('lnimg', req => {
@@ -261,3 +355,4 @@ app.whenReady().then(async () => {
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
+app.on('will-quit', () => Discord.stop());
