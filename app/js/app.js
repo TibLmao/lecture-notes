@@ -211,7 +211,7 @@ const App = {
         <div class="wl-tips"><span><kbd>Double Shift</kbd> search everything</span><span><kbd>/</kbd> insert any block</span><span><kbd>${esc(fmtCombo(Keymap.first('settings')))}</kbd> settings</span><span>Paste screenshots straight in</span></div>
         <div class="wl-custom"><span class="dim">Theme</span>${THEMES.slice(0, 8).map(t => `<button class="wl-theme${SETTINGS.theme === t.id ? ' on' : ''}" data-theme="${t.id}" title="${esc(t.name)}" style="background:${t.ed.bg};border-color:${t.ui.accent}"><i style="background:${t.ed.h1}"></i><i style="background:${t.ed.str}"></i></button>`).join('')}<button class="linkbtn" data-act="settings">More settings…</button></div></div>`;
     } else {
-      el.innerHTML = `<div class="hints">
+      el.innerHTML = `<div class="hints"><div class="hints-logo">${appLogo(88)}</div>
         <div class="hint-row"><span>Search Everywhere</span><kbd>${k('searchEverywhere')}</kbd></div>
         <div class="hint-row"><span>Go to Note</span><kbd>${k('gotoNote')}</kbd></div>
         <div class="hint-row"><span>Recent Notes</span><kbd>${k('recentNotes')}</kbd></div>
@@ -378,8 +378,18 @@ const App = {
     Dialog.open({ title: 'About', width: 460, body: h('div.about', { html: `${appLogo(72)}<h2>unicode</h2><p class="dim">Version ${esc(Store.info.version || '2.0.0')}${IS_DESKTOP ? ' · Electron ' + esc(Store.info.electron || '') : ''}</p><p>An IDE-flavoured notebook for university lectures: themes, keymaps, tool windows and plugins, with maths, code and images built in.</p><p class="dim small">Built with Electron, KaTeX, highlight.js, JetBrains Mono and Inter (open-source licences).</p>` }), buttons: [{ label: 'Close', primary: true, value: null }] });
   },
 };
+let _logoN = 0;
 function appLogo(size) {
-  return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="lg${size}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF8A3D"/><stop offset=".5" stop-color="#F0397B"/><stop offset="1" stop-color="#7B5CFF"/></linearGradient></defs><rect x="2" y="2" width="60" height="60" rx="14" fill="url(#lg${size})"/><rect x="11" y="11" width="42" height="42" rx="6" fill="#101114"/><path d="M17.5 23.5v7a5.5 5.5 0 0 0 11 0v-7" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M39 25v10M34 30h10" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round"/><rect x="17" y="43" width="16" height="3.4" rx="1.2" fill="#fff"/></svg>`;
+  // the {u} logo: white u between gradient code braces
+  const n = 'lg' + (++_logoN);
+  return `<svg class="app-logo" width="${size}" height="${size}" viewBox="0 0 1024 1024" aria-hidden="true"><defs>
+<linearGradient id="${n}b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1A1B23"/><stop offset="1" stop-color="#0B0C10"/></linearGradient>
+<linearGradient id="${n}r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB15A"/><stop offset=".5" stop-color="#FF4D8D"/><stop offset="1" stop-color="#8B6CFF"/></linearGradient>
+<radialGradient id="${n}g" cx=".5" cy=".55" r=".55"><stop offset="0" stop-color="#FF4D8D" stop-opacity=".28"/><stop offset="1" stop-color="#FF4D8D" stop-opacity="0"/></radialGradient></defs>
+<rect width="1024" height="1024" rx="228" fill="url(#${n}b)"/><rect width="1024" height="1024" rx="228" fill="url(#${n}g)"/>
+<g fill="none" stroke="url(#${n}r)" stroke-width="66" stroke-linecap="round" stroke-linejoin="round"><path d="M318 250C238 250 226 292 226 352V446C226 486 206 512 158 512C206 512 226 538 226 578V672C226 732 238 774 318 774"/><path d="M706 250C786 250 798 292 798 352V446C798 486 818 512 866 512C818 512 798 538 798 578V672C798 732 786 774 706 774"/></g>
+<path d="M404 392V552a108 108 0 0 0 216 0V392M620 392V640" fill="none" stroke="#fff" stroke-width="88" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="3" y="3" width="1018" height="1018" rx="225" fill="none" stroke="#fff" stroke-opacity=".1" stroke-width="6"/></svg>`;
 }
 
 /* ---------------- Discord Rich Presence ---------------- */
@@ -475,6 +485,7 @@ function wireChrome() {
   const fb = $('#floatBar');
   fb.innerHTML = [['bold', 'bold'], ['italic', 'italic'], ['underline', 'underline'], ['strike', 'strike'], ['highlight', 'highlight'], ['inlineCode', 'code'], ['insertLink', 'link'], '|', ['h1', null, 'H1'], ['h2', null, 'H2'], ['bulletList', 'listBullet'], ['checklist', 'checklist'], ['quote', 'quote'], '|', ['mathInline', 'sigma']]
     .map(x => x === '|' ? '<span class="psep"></span>' : `<button data-action="${x[0]}" data-tip="${esc(Actions.get(x[0]).name)}" data-tip-action="${x[0]}">${x[1] ? icon(x[1]) : `<b style="font:700 11px var(--font-ui)">${x[2]}</b>`}</button>`).join('');
+  $('#tbLogo').innerHTML = appLogo(20); $('#tbLogo').addEventListener('click', () => App.about());
   $('#mainMenuBtn').addEventListener('click', e => App.openMainMenu(e.currentTarget.getBoundingClientRect()));
   $('#menubar').addEventListener('mousedown', e => { const b = e.target.closest('.menubar-item'); if (!b) return; e.preventDefault(); if (b.classList.contains('open')) { Menu.closeAll(); return; } App.openMenubar(+b.dataset.i); });
   $('#menubar').addEventListener('mouseover', e => { const b = e.target.closest('.menubar-item'); if (b && Menu.isOpen && $('#menubar .menubar-item.open') && !b.classList.contains('open')) App.openMenubar(+b.dataset.i); });

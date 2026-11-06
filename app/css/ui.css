@@ -590,3 +590,10 @@ body.no-anim *, body.no-anim *::before, body.no-anim *::after { transition: none
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 body.theme-light .proj-tile { color: #fff; }
 :focus-visible { outline-offset: 1px; }
+
+/* logo */
+#tbLogo { padding: 0; width: 30px; }
+#tbLogo .app-logo { display: block; filter: drop-shadow(0 1px 2px rgba(0,0,0,.35)); transition: transform .15s; }
+#tbLogo:hover .app-logo { transform: scale(1.08); }
+.hints-logo { display: flex; justify-content: center; margin-bottom: 22px; opacity: .55; filter: saturate(.75); }
+.wl-logo .app-logo, .about .app-logo { filter: drop-shadow(0 6px 18px rgba(255,77,141,.28)); }
