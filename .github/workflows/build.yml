@@ -1,0 +1,50 @@
+name: Build Windows installer
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Stamp build number
+        shell: bash
+        run: |
+          echo "{\"build\": ${{ github.run_number }}}" > app/build.json
+          echo "VERSION=$(node -p "require('./package.json').version")" >> "$GITHUB_ENV"
+
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Build installer
+        run: npx electron-builder --win nsis --x64 --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LectureNotes-Setup
+          path: dist/*.exe
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}-build${{ github.run_number }}
+          name: Lecture Notes ${{ env.VERSION }} (build ${{ github.run_number }})
+          body: |
+            Download **LectureNotes-Setup-${{ env.VERSION }}.exe** below and double-click it to install.
+            Windows may say "Windows protected your PC" because the app isn't code-signed: click **More info → Run anyway**.
+          files: dist/*.exe
+          make_latest: true

@@ -1,0 +1,45 @@
+{
+  "name": "lecture-notes",
+  "productName": "Lecture Notes",
+  "version": "2.0.0",
+  "description": "An IntelliJ-style notebook for university lectures: themes, keymaps, tool windows, maths, code and images.",
+  "main": "main.js",
+  "author": "Lecture Notes",
+  "license": "MIT",
+  "repository": "github:TibLmao/lecture-notes",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win nsis --x64"
+  },
+  "dependencies": {
+    "@fontsource/atkinson-hyperlegible": "^5.0.0",
+    "@fontsource/fira-code": "^5.0.0",
+    "@fontsource/ibm-plex-mono": "^5.0.0",
+    "@fontsource/ibm-plex-sans": "^5.0.0",
+    "@fontsource/inter": "^5.0.0",
+    "@fontsource/jetbrains-mono": "^5.0.0",
+    "@fontsource/lexend": "^5.0.0",
+    "@fontsource/literata": "^5.0.0",
+    "@fontsource/source-code-pro": "^5.0.0",
+    "@fontsource/source-serif-4": "^5.0.0",
+    "@highlightjs/cdn-assets": "^11.9.0",
+    "katex": "^0.16.11"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.lecturenotes.app",
+    "productName": "Lecture Notes",
+    "artifactName": "LectureNotes-Setup-${version}.${ext}",
+    "directories": { "buildResources": "build", "output": "dist" },
+    "files": ["main.js", "preload.js", "package.json", "app/**/*", "build/icon.png", "node_modules/**/*"],
+    "asar": true,
+    "win": { "target": [{ "target": "nsis", "arch": ["x64"] }], "icon": "build/icon.png" },
+    "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "createStartMenuShortcut": true, "shortcutName": "Lecture Notes" },
+    "mac": { "target": "dmg", "category": "public.app-category.productivity", "icon": "build/icon.png" },
+    "linux": { "target": "AppImage", "category": "Office", "icon": "build/icon.png" }
+  }
+}

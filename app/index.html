@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' lnimg: data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; script-src 'self'; connect-src 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lecture Notes</title>
+<link rel="stylesheet" href="../node_modules/@fontsource/jetbrains-mono/400.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/jetbrains-mono/500.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/jetbrains-mono/600.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/jetbrains-mono/700.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/jetbrains-mono/400-italic.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/inter/400.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/inter/500.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/inter/600.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/inter/700.css">
+<link rel="stylesheet" href="../node_modules/katex/dist/katex.min.css">
+<link rel="stylesheet" href="css/ui.css">
+<link rel="stylesheet" href="css/editor.css">
+</head>
+<body class="ui-new no-editor">
+<div id="app">
+  <header id="toolbar">
+    <div class="tb-left">
+      <button id="mainMenuBtn" class="ibtn tbtn" data-tip="Main Menu">
+        <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M2.5 4h11M2.5 8h11M2.5 12h11"/></svg>
+      </button>
+      <div id="menubar"></div>
+      <button id="projWidget" class="widget" data-tip="Notes folder"><span class="proj-tile">LN</span><span class="w-name">lectures</span><svg class="ic caret" width="16" height="16" viewBox="0 0 16 16"><path d="M4.5 6.5h7L8 10.25z" fill="currentColor"/></svg></button>
+      <button id="modWidget" class="widget" data-tip="Module"><span class="w-ic"></span><span class="w-name"></span><svg class="ic caret" width="16" height="16" viewBox="0 0 16 16"><path d="M4.5 6.5h7L8 10.25z" fill="currentColor"/></svg></button>
+    </div>
+    <div id="tbDrag" class="tb-drag"><span id="tbTitle"></span></div>
+    <div class="tb-right">
+      <div id="runWidget" class="run-widget"></div>
+      <button class="ibtn tbtn" data-action="searchEverywhere" data-tip="Search Everywhere" data-tip-action="searchEverywhere">
+        <svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M10.4 10.4l3.35 3.35"/></svg>
+      </button>
+      <button class="ibtn tbtn" data-action="settings" data-tip="Settings" data-tip-action="settings" id="tbSettings"></button>
+    </div>
+    <div class="wc-space"></div>
+  </header>
+  <div id="workspace">
+    <nav id="stripeL" class="stripe left"></nav>
+    <aside id="twLeft" class="twside">
+      <div id="twLeftTop" class="twslot"></div>
+      <div id="splitLH" class="split h"></div>
+      <div id="twLeftBottom" class="twslot"></div>
+    </aside>
+    <div id="splitL" class="split v"></div>
+    <main id="center">
+      <div id="tabs"></div>
+      <div id="fmtbar"></div>
+      <div id="findbar">
+        <div class="fb-row">
+          <button class="ibtn sm" data-act="toggleReplace" data-tip="Toggle Replace"><svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M6.25 3.75L10.5 8l-4.25 4.25"/></svg></button>
+          <div class="fb-field"><svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M10.4 10.4l3.35 3.35"/></svg><input id="findInput" placeholder="Find" spellcheck="false" autocomplete="off"><button class="tgl" data-opt="cs" data-tip="Match Case">Cc</button><button class="tgl" data-opt="ww" data-tip="Words">W</button><button class="tgl" data-opt="re" data-tip="Regex">.*</button></div>
+          <span id="findCount"></span>
+          <button class="ibtn sm" data-act="prev" data-tip="Previous Occurrence" data-tip-key="Shift+Enter"><svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M8 13.25V2.75M3.75 7L8 2.75 12.25 7"/></svg></button>
+          <button class="ibtn sm" data-act="next" data-tip="Next Occurrence" data-tip-key="Enter"><svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M8 2.75v10.5M3.75 9L8 13.25 12.25 9"/></svg></button>
+          <span class="fb-grow"></span>
+          <button class="ibtn sm" data-act="close" data-tip="Close" data-tip-key="Esc"><svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M4.25 4.25l7.5 7.5M11.75 4.25l-7.5 7.5"/></svg></button>
+        </div>
+        <div class="fb-row rep">
+          <span class="fb-pad"></span>
+          <div class="fb-field"><svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M2.5 5.5h9.25l-2.25-2.25M13.5 10.5H4.25l2.25 2.25"/></svg><input id="replaceInput" placeholder="Replace" spellcheck="false" autocomplete="off"></div>
+          <button class="btn sm" data-act="replace">Replace</button>
+          <button class="btn sm" data-act="replaceAll">Replace All</button>
+        </div>
+      </div>
+      <div id="edWrap">
+        <div id="edScroll">
+          <div id="edPage">
+            <div id="gutter"></div>
+            <div id="curline"></div>
+            <div id="edDoc">
+              <div id="docmeta"></div>
+              <input id="title" placeholder="Untitled" autocomplete="off" spellcheck="false">
+              <div id="editorSlot"></div>
+            </div>
+            <div id="codeTools"><button class="ct-lang" data-tip="Language"></button><button class="ct-copy" data-tip="Copy code"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="5.25" y="5.25" width="8.75" height="8.75" rx="1.5"/><path d="M10.75 5.25V3.5c0-.55-.45-1-1-1H3.5c-.55 0-1 .45-1 1v6.25c0 .55.45 1 1 1h1.75"/></svg></button></div>
+          </div>
+        </div>
+        <div id="scrollmarks"></div>
+        <div id="bgEditor" class="bg-layer"></div>
+        <div id="dropzone"><div>Drop images or Markdown files</div></div>
+      </div>
+      <div id="crumbs"></div>
+      <div id="empty"></div>
+    </main>
+    <div id="splitR" class="split v"></div>
+    <aside id="twRight" class="twside"><div id="twRightTop" class="twslot"></div></aside>
+    <nav id="stripeR" class="stripe right"></nav>
+  </div>
+  <footer id="statusbar">
+    <div id="stLeft"></div>
+    <div class="grow"></div>
+    <div id="stProgress"></div>
+    <span id="stTimer" class="st-i"></span>
+    <button id="stCaret" class="st-b st-doc" data-tip="Go to Line" data-tip-action="gotoLine"></button>
+    <span id="stWords" class="st-i st-doc"></span>
+    <span class="st-i st-doc">Markdown</span>
+    <span class="st-i st-doc">UTF-8</span>
+    <button id="stLock" class="st-b" data-tip="Read-only"></button>
+    <span id="stSave" class="st-i" data-tip="Saved"></span>
+  </footer>
+</div>
+<div id="bgImage" class="bg-layer"></div>
+<div id="stToast"></div>
+<div id="imgBar" class="pillbar">
+  <button data-w="25">S</button><button data-w="50">M</button><button data-w="75">L</button><button data-w="100">Full</button><button data-w="">Auto</button>
+  <span class="psep"></span>
+  <button data-align="left" data-tip="Align left"><svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M2.5 3.5h11M2.5 6.5h7M2.5 9.5h11M2.5 12.5h7"/></svg></button>
+  <button data-align="center" data-tip="Centre"><svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M2.5 3.5h11M4.5 6.5h7M2.5 9.5h11M4.5 12.5h7"/></svg></button>
+  <button data-align="right" data-tip="Align right"><svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M2.5 3.5h11M6.5 6.5h7M2.5 9.5h11M6.5 12.5h7"/></svg></button>
+  <span class="psep"></span>
+  <button data-act="caption" data-tip="Caption">Caption</button>
+  <button data-act="view" data-tip="View full size"><svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg></button>
+  <button data-act="reveal" data-tip="Show in Explorer" class="desk-only"><svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M9.25 2.25h4.5v4.5M13.5 2.5L7.75 8.25M11.75 9.5v3c0 .7-.55 1.25-1.25 1.25h-7c-.7 0-1.25-.55-1.25-1.25v-7c0-.7.55-1.25 1.25-1.25h3"/></svg></button>
+  <button data-act="del" data-tip="Delete image"><svg class="ic" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M2.5 4.25h11M6 4.25V2.75h4v1.5M3.75 4.25l.7 9.25c.05.45.4.75.85.75h5.4c.45 0 .8-.3.85-.75l.7-9.25M6.5 6.75v5M9.5 6.75v5"/></svg></button>
+</div>
+<div id="imgHandle" data-tip="Drag to resize"></div>
+<div id="floatBar" class="pillbar"></div>
+<div id="hoverCard"></div>
+<div id="lightbox"><img alt=""></div>
+
+<script src="../node_modules/katex/dist/katex.min.js"></script>
+<script src="../node_modules/@highlightjs/cdn-assets/highlight.min.js"></script>
+<script src="js/util.js"></script>
+<script src="js/icons.js"></script>
+<script src="js/themes.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/store.js"></script>
+<script src="js/model.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/markdown.js"></script>
+<script src="js/editor.js"></script>
+<script src="js/editor-atoms.js"></script>
+<script src="js/editor-input.js"></script>
+<script src="js/editor-view.js"></script>
+<script src="js/actions.js"></script>
+<script src="js/panels.js"></script>
+<script src="js/search.js"></script>
+<script src="js/settings-ui.js"></script>
+<script src="js/tools.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
