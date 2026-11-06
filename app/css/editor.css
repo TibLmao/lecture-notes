@@ -1,5 +1,5 @@
 /* ============================================================
-   Codebook: editor surface
+   unicode: editor surface
    ============================================================ */
 #edWrap { flex: 1; position: relative; min-height: 0; display: flex; }
 #edScroll { flex: 1; overflow: auto; position: relative; background: var(--e-bg); scroll-padding: 80px 0; }

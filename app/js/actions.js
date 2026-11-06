@@ -269,7 +269,7 @@ function registerActions() {
   R('keymapRef', 'Keyboard Shortcuts', { group: 'Help', icon: 'keyboard', keys: K(['Mod+Shift+/'], ['Mod+K Mod+S']), run: () => App.keymapReference(), anywhere: true, keywords: 'keymap cheatsheet' });
   R('markdownHelp', 'Typing Shortcuts Cheat Sheet', { group: 'Help', icon: 'help', run: () => App.markdownHelp(), keywords: 'markdown syntax' });
   R('checkUpdates', 'Check for Updates…', { group: 'Help', icon: 'update', run: () => App.checkUpdates(true), enabled: () => IS_DESKTOP });
-  R('about', 'About Codebook', { group: 'Help', icon: 'info', run: () => App.about() });
+  R('about', 'About unicode', { group: 'Help', icon: 'info', run: () => App.about() });
 }
 function fmtState(cmd) { try { return document.queryCommandState(cmd); } catch (e) { return false; } }
 function blockIs(tag) { const b = curBlock(); return !!(b && b.tagName === tag); }

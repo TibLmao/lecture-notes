@@ -62,7 +62,7 @@ const DEFAULT_SETTINGS = {
   autosaveDelay: 500, confirmDelete: true, restoreSession: true, singleClickOpen: true,
   projectSort: 'created', projectDates: true, projectCounts: true, foldersFirst: true,
   timerHeadings: false, timerHours: false, historyMinutes: 5, historyDays: 30,
-  checkUpdates: true, dateStyle: 'medium',
+  checkUpdates: true, autoUpdate: true, dateStyle: 'medium',
   // Discord Rich Presence
   discordRpc: false, discordClientId: '', discordShow: 'title', discordModule: true, discordTimer: true,
 };

@@ -1,4 +1,4 @@
-// Codebook: the small, safe API the editor page is allowed to use.
+// unicode: the small, safe API the editor page is allowed to use.
 const { contextBridge, ipcRenderer } = require('electron');
 const inv = (ch) => (...a) => ipcRenderer.invoke(ch, ...a);
 
@@ -11,7 +11,8 @@ contextBridge.exposeInMainWorld('lnApp', {
   openExternal: inv('openExternal'), setTitleBarOverlay: inv('setTitleBarOverlay'), setZoom: inv('setZoom'), setSpellLanguages: inv('setSpellLanguages'),
   replaceMisspelling: inv('replaceMisspelling'), addToDictionary: inv('addToDictionary'), paste: inv('paste'),
   toggleDevTools: inv('toggleDevTools'), toggleFullscreen: inv('toggleFullscreen'), toggleMaximize: inv('toggleMaximize'), quit: inv('quit'),
-  checkUpdates: inv('checkUpdates'),
+  checkUpdates: inv('checkUpdates'), downloadUpdate: inv('downloadUpdate'), installUpdate: inv('installUpdate'),
+  onUpdateProgress: cb => ipcRenderer.on('update-progress', (e, d) => cb(d)),
   onContextMenu: cb => ipcRenderer.on('context-menu', (_e, p) => cb(p)),
   onExternalChange: cb => ipcRenderer.on('external-change', (_e, ids) => cb(ids)),
   onBeforeQuit: cb => ipcRenderer.on('before-quit', async () => { try { await cb(); } catch (e) {} ipcRenderer.send('quit-ready'); }),

@@ -1,7 +1,7 @@
 {
-  "name": "codebook",
-  "productName": "Codebook",
-  "version": "2.1.0",
+  "name": "unicode",
+  "productName": "unicode",
+  "version": "2.2.0",
   "description": "An IntelliJ-style notebook for university lectures: themes, keymaps, tool windows, maths, code and images.",
   "main": "main.js",
   "author": "TibLmao",
@@ -31,9 +31,9 @@
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "com.codebook.app",
-    "productName": "Codebook",
-    "artifactName": "Codebook-Setup-${version}.${ext}",
+    "appId": "com.tiblmao.unicode",
+    "productName": "unicode",
+    "artifactName": "unicode-setup-${version}.${ext}",
     "directories": {
       "buildResources": "build",
       "output": "dist"
@@ -64,7 +64,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Codebook"
+      "shortcutName": "unicode"
     },
     "mac": {
       "target": "dmg",

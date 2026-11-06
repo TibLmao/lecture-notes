@@ -1,4 +1,4 @@
-// Codebook: Electron main process
+// unicode: Electron main process
 const { app, BrowserWindow, ipcMain, protocol, net, shell, Menu, dialog, session, nativeTheme } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -7,7 +7,7 @@ const os = require('os');
 const { pathToFileURL } = require('url');
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'lnimg', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }]);
-app.setAppUserModelId('com.codebook.app');
+app.setAppUserModelId('com.tiblmao.unicode');
 if (!app.requestSingleInstanceLock()) { app.quit(); }
 
 const USER = () => app.getPath('userData');
@@ -41,10 +41,10 @@ const V = {
 };
 async function ensureVault() {
   if (!config.vault) {
-    // people upgrading from "Lecture Notes" keep their existing folder
-    const old = path.join(app.getPath('documents'), 'LectureNotes');
-    const neu = path.join(app.getPath('documents'), 'Codebook');
-    config.vault = (!fs.existsSync(neu) && fs.existsSync(path.join(old, 'notes'))) ? old : neu;
+    // people upgrading from the app's older names keep their existing folder
+    const docs = app.getPath('documents'); const neu = path.join(docs, 'unicode');
+    const old = ['Codebook', 'LectureNotes'].map(n => path.join(docs, n)).find(d => fs.existsSync(path.join(d, 'notes')));
+    config.vault = (!fs.existsSync(path.join(neu, 'notes')) && old) ? old : neu;
   }
   for (const d of [V.notes(), V.images(), V.history(), V.trash()]) await fsp.mkdir(d, { recursive: true });
   config.recent = [config.vault, ...(config.recent || []).filter(p => p !== config.vault)].slice(0, 10);
@@ -159,7 +159,7 @@ function registerIpc() {
   H('exportPdf', async ({ name, html }) => {
     const r = await dialog.showSaveDialog(win, { defaultPath: path.join(app.getPath('documents'), safeName(name)), filters: [{ name: 'PDF', extensions: ['pdf'] }] });
     if (r.canceled || !r.filePath) return null;
-    const tmp = path.join(os.tmpdir(), 'codebook-export-' + Date.now() + '.html');
+    const tmp = path.join(os.tmpdir(), 'unicode-export-' + Date.now() + '.html');
     await fsp.writeFile(tmp, await inlineImages(html), 'utf8');
     const pw = new BrowserWindow({ show: false, webPreferences: { sandbox: true, javascript: false } });
     try {
@@ -198,19 +198,76 @@ function registerIpc() {
   H('toggleFullscreen', async () => win && win.setFullScreen(!win.isFullScreen()));
   H('toggleMaximize', async () => { if (!win) return; if (win.isMaximized()) win.unmaximize(); else win.maximize(); });
   H('quit', async () => app.quit());
-  H('checkUpdates', async () => {
+  H('checkUpdates', async () => Updater.check());
+  H('downloadUpdate', async () => Updater.download());
+  H('installUpdate', async () => { Updater.install(true); setTimeout(() => app.quit(), 150); return true; });
+}
+
+/* ---------------- updates ----------------
+   Finds the newest GitHub release, downloads its installer to a temp folder (checking the
+   SHA-256 GitHub publishes for it) and runs it silently, then reopens the app. */
+const Updater = {
+  info: null, file: '', downloading: null, launched: false,
+  repo() {
     const pkg = require('./package.json');
-    const repo = String((pkg.repository && pkg.repository.url) || pkg.repository || '').replace(/^github:/, '').replace(/^https:\/\/github.com\//, '').replace(/\.git$/, '');
-    let build = 0; try { build = require('./app/build.json').build || 0; } catch (e) {}
+    return String((pkg.repository && pkg.repository.url) || pkg.repository || '').replace(/^github:/, '').replace(/^https:\/\/github.com\//, '').replace(/\.git$/, '');
+  },
+  build() { try { return require('./app/build.json').build || 0; } catch (e) { return 0; } },
+  async check() {
+    const pkg = require('./package.json'); const repo = this.repo(); const build = this.build();
     if (!repo || !repo.includes('/')) throw new Error('No update source configured');
-    const res = await net.fetch(`https://api.github.com/repos/${repo}/releases/latest`, { headers: { 'User-Agent': 'Codebook', Accept: 'application/vnd.github+json' } });
+    const res = await net.fetch(`https://api.github.com/repos/${repo}/releases/latest`, { headers: { 'User-Agent': 'Unicode-notes-app', Accept: 'application/vnd.github+json' } });
     if (!res.ok) throw new Error(res.status === 404 ? 'No public releases found' : 'GitHub returned ' + res.status);
     const j = await res.json();
     const latestBuild = parseInt(((j.tag_name || '').match(/build(\d+)/) || [])[1] || '0');
-    const asset = (j.assets || []).find(a => /\.exe$/i.test(a.name));
-    return { current: pkg.version + (build ? ' (build ' + build + ')' : ''), latest: j.name || j.tag_name, newer: latestBuild > build, url: asset ? asset.browser_download_url : j.html_url };
-  });
-}
+    const asset = (j.assets || []).find(a => /setup.*\.exe$/i.test(a.name)) || (j.assets || []).find(a => /\.exe$/i.test(a.name));
+    this.info = { current: pkg.version + (build ? ' (build ' + build + ')' : ''), latest: j.name || j.tag_name, build: latestBuild,
+      newer: !!build && latestBuild > build, url: asset ? asset.browser_download_url : j.html_url, page: j.html_url,
+      size: asset ? asset.size : 0, digest: asset && asset.digest ? String(asset.digest) : '', name: asset ? asset.name : '', notes: String(j.body || '').slice(0, 2000),
+      canInstall: !!asset && process.platform === 'win32' && app.isPackaged, ready: !!this.file };
+    return this.info;
+  },
+  send(ch, data) { if (win && !win.isDestroyed()) win.webContents.send(ch, data); },
+  download() {
+    if (this.file) return Promise.resolve({ file: this.file });
+    if (this.downloading) return this.downloading;
+    this.downloading = (async () => {
+      const i = this.info || await this.check();
+      if (!i.newer || !i.canInstall) throw new Error('No installable update');
+      const dir = path.join(os.tmpdir(), 'unicode-update'); await fsp.mkdir(dir, { recursive: true });
+      const out = path.join(dir, safeName(i.name || 'Unicode-Setup.exe'));
+      const part = out + '.part';
+      const res = await net.fetch(i.url, { headers: { 'User-Agent': 'Unicode-notes-app' } });
+      if (!res.ok || !res.body) throw new Error('Download failed (' + res.status + ')');
+      const total = +res.headers.get('content-length') || i.size || 0;
+      const hash = require('crypto').createHash('sha256');
+      const fh = await fsp.open(part, 'w');
+      let got = 0, lastSent = 0;
+      try {
+        const reader = res.body.getReader();
+        for (;;) {
+          const { done, value } = await reader.read(); if (done) break;
+          const buf = Buffer.from(value); hash.update(buf); await fh.write(buf); got += buf.length;
+          if (Date.now() - lastSent > 250) { lastSent = Date.now(); this.send('update-progress', { got, total }); }
+        }
+      } finally { await fh.close(); }
+      const sum = hash.digest('hex');
+      if (i.digest && i.digest.startsWith('sha256:') && i.digest.slice(7).toLowerCase() !== sum) { await fsp.rm(part, { force: true }); throw new Error('The download was corrupted. Try again.'); }
+      await fsp.rm(out, { force: true }); await fsp.rename(part, out);
+      this.file = out; this.send('update-progress', { got: total || got, total: total || got, done: true });
+      return { file: out };
+    })().finally(() => { this.downloading = null; });
+    return this.downloading;
+  },
+  install(reopen) {
+    if (!this.file || this.launched) return;
+    this.launched = true;
+    try {
+      const { spawn } = require('child_process');
+      spawn(this.file, ['/S', '--updated', ...(reopen ? ['--force-run'] : [])], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+    } catch (e) { this.launched = false; }
+  },
+};
 
 /* ---------------- window ---------------- */
 async function createWindow() {
@@ -222,7 +279,7 @@ async function createWindow() {
   win = new BrowserWindow({
     width: (st.bounds && st.bounds.width) || 1360, height: (st.bounds && st.bounds.height) || 880,
     x: st.bounds && st.bounds.x, y: st.bounds && st.bounds.y,
-    minWidth: 640, minHeight: 420, backgroundColor: bg, title: 'Codebook', show: false,
+    minWidth: 640, minHeight: 420, backgroundColor: bg, title: 'unicode', show: false,
     icon: path.join(__dirname, 'build', 'icon.png'),
     titleBarStyle: mac ? 'hiddenInset' : 'hidden',
     titleBarOverlay: mac ? undefined : { color: bg, symbolColor: dark ? '#CED0D6' : '#6C707E', height: 40 },
@@ -251,11 +308,12 @@ async function createWindow() {
 function debounce(fn, ms) { let t; return () => { clearTimeout(t); t = setTimeout(fn, ms); }; }
 
 app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
-/* carry settings over from the app's old name ("Lecture Notes") */
+/* carry settings over from the app's old names ("Codebook", "Lecture Notes") */
 async function migrateUserData() {
   try {
-    const oldDir = path.join(app.getPath('appData'), 'Lecture Notes');
-    if (oldDir === USER() || fs.existsSync(CONFIG()) || !fs.existsSync(path.join(oldDir, 'config.json'))) return;
+    if (fs.existsSync(CONFIG())) return;
+    const oldDir = ['Codebook', 'Lecture Notes'].map(n => path.join(app.getPath('appData'), n)).find(d => d.toLowerCase() !== USER().toLowerCase() && fs.existsSync(path.join(d, 'config.json')));
+    if (!oldDir) return;
     await fsp.mkdir(USER(), { recursive: true });
     for (const f of ['config.json', 'settings.json', 'window.json']) await fsp.copyFile(path.join(oldDir, f), path.join(USER(), f)).catch(() => {});
   } catch (e) { /* best effort */ }
@@ -325,7 +383,7 @@ const Discord = {
         details: a.details ? String(a.details).slice(0, 128) : undefined,
         state: a.state ? String(a.state).slice(0, 128) : undefined,
         timestamps: a.noTime ? undefined : { start: a.start || this.startedAt },
-        assets: { large_image: 'codebook', large_text: 'Codebook', ...(a.small ? { small_image: a.small, small_text: a.smallText || '' } : {}) },
+        assets: { large_image: 'unicode', large_text: 'unicode', ...(a.small ? { small_image: a.small, small_text: a.smallText || '' } : {}) },
         instance: false,
       } : undefined;
       this.write(1, { cmd: 'SET_ACTIVITY', args: { pid: process.pid, activity }, nonce: String(++this.nonce) });
@@ -355,4 +413,4 @@ app.whenReady().then(async () => {
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
-app.on('will-quit', () => Discord.stop());
+app.on('will-quit', () => { Discord.stop(); Updater.install(false); });   // a downloaded update installs when you quit

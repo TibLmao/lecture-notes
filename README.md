@@ -1,10 +1,10 @@
-# Codebook
+# unicode
 
 An IntelliJ-style notebook for university lectures. It has themes, keymaps, tool windows and plugins, with maths, code and images built in. Your notes are saved as files on your computer, and nothing is sent anywhere.
 
 ## Install (Windows)
 
-1. Open the **Releases** page of this repository and download `Codebook-Setup-x.y.z.exe`.
+1. Open the **Releases** page of this repository and download `unicode-setup-x.y.z.exe`.
 2. Double-click it. Windows might say *"Windows protected your PC"* because the app isn't code-signed. Click **More info → Run anyway**.
 3. Pick an install location. The installer adds a Start menu entry and a desktop shortcut.
 
@@ -12,7 +12,7 @@ Every push to `main` builds a new installer automatically (see *Actions*). **Hel
 
 ## Where your notes live
 
-The default folder is `Documents\Codebook` (if you used the app back when it was called Lecture Notes, it keeps using `Documents\LectureNotes`):
+The default folder is `Documents\unicode` (if you used the app when it was called Lecture Notes or Codebook, it keeps using that folder):
 
 | Path | What |
 |---|---|
@@ -48,4 +48,8 @@ npm run dist:win   # build the installer into dist/
 
 ## Discord Rich Presence
 
-Settings → Tools → Discord Rich Presence. Shows "Playing Codebook — Editing <note>" in your Discord profile while the Discord desktop app is open. You can show the note title, only the module, or nothing specific.
+Settings → Tools → Discord Rich Presence. Shows "Playing unicode — Editing <note>" in your Discord profile while the Discord desktop app is open. You can show the note title, only the module, or nothing specific.
+
+## Updates
+
+unicode checks this repository's releases on startup (and every few hours). New versions download in the background and install when you click **Restart now**, or the next time you close the app. Settings → System Settings → Updates.

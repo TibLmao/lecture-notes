@@ -83,7 +83,7 @@ const SettingsUI = {
   },
   resetPage() {
     const keys = { appearance: ['theme', 'uiStyle', 'accent', 'uiFont', 'uiSize', 'compact', 'zoom', 'animations', 'stripeNames', 'fileColors', 'showStripes', 'bgImage', 'bgOpacity', 'bgFit', 'bgTarget', 'syncOS', 'themeLight', 'themeDark'],
-      toolbars: ['showFormatBar', 'floatingBar', 'showStatusBar', 'showBreadcrumbs'], system: ['autosaveDelay', 'confirmDelete', 'restoreSession', 'checkUpdates'],
+      toolbars: ['showFormatBar', 'floatingBar', 'showStatusBar', 'showBreadcrumbs'], system: ['autosaveDelay', 'confirmDelete', 'restoreSession', 'checkUpdates', 'autoUpdate'],
       editor: ['lineNumbers', 'currentLine', 'headingMarkers', 'foldIcons', 'focusMode', 'typewriter', 'spellcheck', 'spellLang', 'editorWidth', 'paraSpacing', 'calloutDefault'],
       font: ['textFont', 'headingFont', 'codeFont', 'fontSize', 'codeSize', 'lineHeight', 'ligatures'], code: ['codeTab', 'autoPairs', 'wrapCode', 'codeLang'],
       images: ['imgWidth', 'imgMaxDim', 'imgQuality', 'imgRounded', 'imgShadow', 'imgCaptions'], timer: ['timerHeadings', 'timerHours'], history: ['historyMinutes', 'historyDays'], discord: ['discordRpc', 'discordShow', 'discordModule', 'discordTimer'],
@@ -155,9 +155,13 @@ const SettingsUI = {
     },
     system(el) {
       el.appendChild(sec('Startup & Saving'));
-      el.appendChild(cbs([['Reopen notes from last session on startup', 'restoreSession'], ['Confirm before deleting', 'confirmDelete'], IS_DESKTOP ? ['Check for updates on startup', 'checkUpdates'] : null].filter(Boolean), this));
+      el.appendChild(cbs([['Reopen notes from last session on startup', 'restoreSession'], ['Confirm before deleting', 'confirmDelete']], this));
       el.appendChild(row('Autosave after', h('div.inline', numberField(SETTINGS.autosaveDelay, { min: 150, max: 5000, step: 50 }, v => this.set('autosaveDelay', v)), h('span.lbl', 'ms of inactivity'))));
       if (IS_DESKTOP) {
+        el.appendChild(sec('Updates'));
+        el.appendChild(cbs([['Check for updates on startup', 'checkUpdates', null, () => SETTINGS.checkUpdates, v => this.set('checkUpdates', v, true)],
+          SETTINGS.checkUpdates ? ['Download updates automatically', 'autoUpdate', 'Downloads in the background, then asks you to restart. Otherwise it asks first.'] : null].filter(Boolean), this));
+        el.appendChild(h('div.inline', h('button.btn', { type: 'button', onclick: () => App.checkUpdates(true) }, 'Check for Updates Now'), h('span.hint', 'You have ' + (Store.info.version || ''))));
         el.appendChild(sec('Notes Folder'));
         el.appendChild(row('Location', h('div.inline.wrap', h('code.path', Store.info.root || ''), h('button.btn', { type: 'button', onclick: () => BRIDGE.chooseVault() }, 'Change…'), h('button.btn', { type: 'button', onclick: () => BRIDGE.openFolder() }, 'Open'))));
         el.appendChild(h('p.hint.block', 'Tip: put your notes folder inside OneDrive, Google Drive or Dropbox to sync it between computers.'));
@@ -285,21 +289,21 @@ const SettingsUI = {
       if (IS_DESKTOP) el.appendChild(h('div.inline', h('button.btn', { type: 'button', onclick: () => { this.dlg.close('ok'); HistoryUI.trash(); } }, 'Restore Deleted Notes…')));
     },
     discord(el) {
-      el.appendChild(h('p.hint.block', 'Show what you’re working on in your Discord profile, like “Playing Codebook — Editing Lecture 3”. The Discord desktop app must be open on this computer.'));
+      el.appendChild(h('p.hint.block', 'Show what you’re working on in your Discord profile, like “Playing unicode — Editing Lecture 3”. The Discord desktop app must be open on this computer.'));
       if (!IS_DESKTOP) { el.appendChild(h('p.hint.block', 'Only available in the desktop app.')); return; }
-      el.appendChild(cbs([['Show Codebook in my Discord status', 'discordRpc', null, () => SETTINGS.discordRpc, v => this.set('discordRpc', v, true)]], this));
+      el.appendChild(cbs([['Show unicode in my Discord status', 'discordRpc', null, () => SETTINGS.discordRpc, v => this.set('discordRpc', v, true)]], this));
       if (!SETTINGS.discordRpc) return;
       el.appendChild(sec('What to show'));
       el.appendChild(row('Status line', selectBox([['title', 'Note title (“Editing Lecture 3”)'], ['module', 'Module only (“Editing notes for COMP101”)'], ['generic', 'Nothing specific (“Writing notes”)']], SETTINGS.discordShow, v => this.set('discordShow', v, true))));
       el.appendChild(cbs([
         SETTINGS.discordShow === 'title' ? ['Show the module under the title', 'discordModule'] : null,
-        ['Show elapsed time', 'discordTimer', 'Time since you opened Codebook, or since you started the lecture timer'],
+        ['Show elapsed time', 'discordTimer', 'Time since you opened unicode, or since you started the lecture timer'],
       ].filter(Boolean), this));
       el.appendChild(sec('Connection'));
       const status = h('span.hint', !(SETTINGS.discordClientId || DISCORD_APP_ID) ? 'Add an Application ID to connect' : Presence.connected ? 'Connected to Discord' : 'Not connected yet. Is Discord open?');
       const idIn = h('input.field.mono', { type: 'text', value: SETTINGS.discordClientId, placeholder: DISCORD_APP_ID ? 'Default (built in)' : 'Paste your Application ID', spellcheck: false, style: { width: '260px' } });
       idIn.addEventListener('change', () => { const v = idIn.value.trim(); if (v && !/^\d{15,25}$/.test(v)) { notify('That doesn’t look like an Application ID', 'It should be a long number from the Discord Developer Portal.', 'warning'); return; } this.set('discordClientId', v); });
-      el.appendChild(row('Application ID', h('div.inline', idIn), DISCORD_APP_ID ? 'Leave empty to use Codebook’s own. Only change this if you made your own Discord application.' : 'From discord.com/developers → your application → General Information.'));
+      el.appendChild(row('Application ID', h('div.inline', idIn), DISCORD_APP_ID ? 'Leave empty to use unicode’s own. Only change this if you made your own Discord application.' : 'From discord.com/developers → your application → General Information.'));
       el.appendChild(row('Status', status));
     },
     advanced(el) {

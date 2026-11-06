@@ -17,12 +17,12 @@ const App = {
   renderToolbar() {
     const n = S.notes[S.active];
     const pw = $('#projWidget'); pw.querySelector('.w-name').textContent = Store.info.name || 'lectures';
-    pw.querySelector('.proj-tile').textContent = (Store.info.name || 'CB').replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase() || 'CB';
+    pw.querySelector('.proj-tile').textContent = (Store.info.name || 'U+').replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase() || 'U+';
     const mw = $('#modWidget'); const f = n ? folderById(n.folderId) : null;
     mw.style.display = f ? '' : 'none';
     if (f) { mw.querySelector('.w-name').textContent = folderPath(f.id).map(x => x.name).join(' / '); mw.querySelector('.w-ic').innerHTML = icon('folder', f.color ? 'c-' + inheritColor(f) : 'c-folder'); }
-    const title = $('#tbTitle'); title.textContent = n ? `${Store.info.name || 'lectures'} – ${n.title || 'Untitled'}` : (Store.info.name || 'Codebook');
-    document.title = n ? `${n.title || 'Untitled'} – Codebook` : 'Codebook';
+    const title = $('#tbTitle'); title.textContent = n ? `${Store.info.name || 'lectures'} – ${n.title || 'Untitled'}` : (Store.info.name || 'unicode');
+    document.title = n ? `${n.title || 'Untitled'} – unicode` : 'unicode';
     Presence.update();
     // run widget
     const rw = $('#runWidget'); rw.style.display = plugin('timer') ? '' : 'none';
@@ -204,7 +204,7 @@ const App = {
     const el = $('#empty');
     const k = id => esc(fmtCombo(Keymap.first(id)));
     if (!S.folders.length && !Object.keys(S.notes).length) {
-      el.innerHTML = `<div class="welcome"><div class="wl-logo">${appLogo(64)}</div><h1>Welcome to Codebook</h1><p class="dim">Your lecture notes, with the power of an IDE.</p>
+      el.innerHTML = `<div class="welcome"><div class="wl-logo">${appLogo(64)}</div><h1>Welcome to unicode</h1><p class="dim">Your lecture notes, with the power of an IDE.</p>
         <div class="wl-actions"><button class="wl-btn primary" data-act="newFolder">${icon('folderAdd', '', 20)}<b>New Module</b><span>One per course, e.g. “CS101 Algorithms”</span></button>
         <button class="wl-btn" data-act="importMarkdown">${icon('import', '', 20)}<b>Import Markdown</b><span>Bring notes from Obsidian or elsewhere</span></button>
         ${IS_DESKTOP ? `<button class="wl-btn" data-act="openFolder">${icon('folderOpen', '', 20)}<b>Open Folder</b><span>Use an existing notes folder</span></button>` : ''}</div>
@@ -337,22 +337,53 @@ const App = {
   markdownHelp() { Dialog.open({ title: 'Typing Shortcuts', width: 560, body: h('div.cheat', { html: CHEAT_SHEET_HTML }), buttons: [{ label: 'Close', primary: true, value: null }] }); },
   async checkUpdates(manual) {
     if (!IS_DESKTOP) return;
-    try {
-      const r = await BRIDGE.checkUpdates();
-      if (r && r.newer) notify('Update available', `Version ${r.latest} is ready (you have ${r.current}).`, 'info', { timeout: 0, actions: [{ label: 'Download', run: () => openExternal(r.url) }] });
-      else if (manual) notify('You’re up to date', 'Codebook ' + ((r && r.current) || ''), 'success');
-    } catch (e) { if (manual) notify('Couldn’t check for updates', String(e && e.message || e), 'warning'); }
+    let r;
+    try { r = await BRIDGE.checkUpdates(); }
+    catch (e) { if (manual) notify('Couldn’t check for updates', String(e && e.message || e), 'warning'); return; }
+    if (!r || !r.newer) { if (manual) notify('You’re up to date', 'unicode ' + ((r && r.current) || ''), 'success'); return; }
+    if (!r.canInstall || !BRIDGE.downloadUpdate) {
+      notify('Update available', `${r.latest} is out (you have ${r.current}).`, 'info', { timeout: 0, actions: [{ label: 'Download', run: () => openExternal(r.url) }] });
+      return;
+    }
+    if (r.ready) return this.updateReady(r);
+    if (SETTINGS.autoUpdate && !manual) return this.downloadUpdate(r, true);
+    notify('Update available', `${r.latest} is out (you have ${r.current}).`, 'info', { timeout: 0, actions: [
+      { label: 'Update now', run: () => this.downloadUpdate(r) },
+      { label: 'What’s new', run: () => openExternal(r.page) }] });
+  },
+  async downloadUpdate(r, quiet) {
+    if (this._dl) return; this._dl = true;
+    const mb = n => (n / 1048576).toFixed(0);
+    if (BRIDGE.onUpdateProgress && !this._prog) {
+      this._prog = true;
+      BRIDGE.onUpdateProgress(p => {
+        if (p.done) { App.progress(false); return; }
+        App.progress(true, p.total ? `Downloading update… ${Math.round(p.got / p.total * 100)}%` : `Downloading update… ${mb(p.got)} MB`);
+      });
+    }
+    if (!quiet) App.progress(true, 'Downloading update…');
+    try { await BRIDGE.downloadUpdate(); App.progress(false); this.updateReady(r); }
+    catch (e) { App.progress(false); notify('Update failed', String(e && e.message || e), 'warning', { timeout: 0, actions: [{ label: 'Try again', run: () => { this._dl = false; this.downloadUpdate(r); } }, { label: 'Download manually', run: () => openExternal(r.url) }] }); }
+    finally { this._dl = false; }
+  },
+  updateReady(r) {
+    notify('Update ready', `${r.latest} has downloaded. Restart unicode to finish, or it’ll install next time you close it.`, 'success', { timeout: 0, actions: [
+      { label: 'Restart now', run: () => this.restartToUpdate() }, { label: 'Later', run: () => {} }] });
+  },
+  async restartToUpdate() {
+    App.progress(true, 'Installing update…');
+    BRIDGE.installUpdate();
   },
   about() {
-    Dialog.open({ title: 'About', width: 460, body: h('div.about', { html: `${appLogo(72)}<h2>Codebook</h2><p class="dim">Version ${esc(Store.info.version || '2.0.0')}${IS_DESKTOP ? ' · Electron ' + esc(Store.info.electron || '') : ''}</p><p>An IDE-flavoured notebook for university lectures: themes, keymaps, tool windows and plugins, with maths, code and images built in.</p><p class="dim small">Built with Electron, KaTeX, highlight.js, JetBrains Mono and Inter (open-source licences).</p>` }), buttons: [{ label: 'Close', primary: true, value: null }] });
+    Dialog.open({ title: 'About', width: 460, body: h('div.about', { html: `${appLogo(72)}<h2>unicode</h2><p class="dim">Version ${esc(Store.info.version || '2.0.0')}${IS_DESKTOP ? ' · Electron ' + esc(Store.info.electron || '') : ''}</p><p>An IDE-flavoured notebook for university lectures: themes, keymaps, tool windows and plugins, with maths, code and images built in.</p><p class="dim small">Built with Electron, KaTeX, highlight.js, JetBrains Mono and Inter (open-source licences).</p>` }), buttons: [{ label: 'Close', primary: true, value: null }] });
   },
 };
 function appLogo(size) {
-  return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="lg${size}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF8A3D"/><stop offset=".5" stop-color="#F0397B"/><stop offset="1" stop-color="#7B5CFF"/></linearGradient></defs><rect x="2" y="2" width="60" height="60" rx="14" fill="url(#lg${size})"/><rect x="11" y="11" width="42" height="42" rx="6" fill="#101114"/><path d="M26.5 23.5h-4.5a4.5 4.5 0 0 0-4.5 4.5v4a4.5 4.5 0 0 0 4.5 4.5h4.5" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M31 36.5v-13h5.2a3.25 3.25 0 0 1 0 6.5H31h6a3.25 3.25 0 0 1 0 6.5z" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><rect x="17" y="43" width="16" height="3.4" rx="1.2" fill="#fff"/></svg>`;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="lg${size}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF8A3D"/><stop offset=".5" stop-color="#F0397B"/><stop offset="1" stop-color="#7B5CFF"/></linearGradient></defs><rect x="2" y="2" width="60" height="60" rx="14" fill="url(#lg${size})"/><rect x="11" y="11" width="42" height="42" rx="6" fill="#101114"/><path d="M17.5 23.5v7a5.5 5.5 0 0 0 11 0v-7" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M39 25v10M34 30h10" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round"/><rect x="17" y="43" width="16" height="3.4" rx="1.2" fill="#fff"/></svg>`;
 }
 
 /* ---------------- Discord Rich Presence ---------------- */
-// Application ID of the "Codebook" app in the Discord Developer Portal (public, not a secret)
+// Application ID of the "unicode" app in the Discord Developer Portal (public, not a secret)
 const DISCORD_APP_ID = '';
 const Presence = {
   connected: false, lastKey: '',
@@ -435,6 +466,7 @@ async function boot() {
     });
     BRIDGE.onBeforeQuit && BRIDGE.onBeforeQuit(async () => { Editor.flush(); saveSession.flush(); while (Store.pending > 0) await sleep(50); return true; });
     if (SETTINGS.checkUpdates) setTimeout(() => App.checkUpdates(false), 8000);
+    setInterval(() => { if (SETTINGS.checkUpdates) App.checkUpdates(false); }, 6 * 3600 * 1000);
   }
   window.addEventListener('beforeunload', () => { Editor.flush(); saveSession.flush(); });
 }
